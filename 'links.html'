@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Meu Hub de Links — Gerenciador</title>
+<style>
+  :root{
+    --bg:#0f1720;
+    --card:#0b1220;
+    --accent:#00d1b2;
+    --muted:#9aa7b2;
+    --text:#e6f1f5;
+    --danger:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;
+    background:linear-gradient(180deg,#071023 0%,var(--bg) 100%);
+    color:var(--text);
+    min-height:100vh;
+    display:flex;align-items:stretch;
+    gap:18px;padding:20px;
+  }
+  .app{
+    width:100%;max-width:1200px;margin:0 auto;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border-radius:12px;padding:18px;box-shadow:0 10px 30px rgba(2,6,23,0.6);
+  }
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+  header .title{display:flex;gap:12px;align-items:center}
+  header h1{margin:0;font-size:18px}
+  header p{margin:0;color:var(--muted);font-size:13px}
+  .controls{display:flex;gap:8px;flex-wrap:wrap}
+  button, .btn{
+    background:var(--card);color:var(--text);border:1px solid rgba(255,255,255,0.03);
+    padding:8px 12px;border-radius:8px;cursor:pointer;font-size:13px;
+  }
+  button.ghost{background:transparent;border:1px dashed rgba(255,255,255,0.04)}
+  .layout{display:grid;grid-template-columns:260px 1fr;gap:18px}
+  .panel{background:rgba(255,255,255,0.02);padding:12px;border-radius:10px}
+  .panel h3{margin:0 0 10px 0;font-size:14px}
+  .categories{display:flex;flex-direction:column;gap:6px}
+  .cat{padding:8px;border-radius:8px;background:transparent;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+  .cat.active{background:linear-gradient(90deg, rgba(0,209,178,0.08), rgba(0,209,178,0.03));color:var(--text);font-weight:600}
+  .main-top{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+  .search{flex:1;display:flex;gap:8px}
+  .search input{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--text)}
+  .grid-links{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+  .link-card{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.02));padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.02)}
+  .link-card a{color:var(--accent);text-decoration:none;font-weight:600}
+  .muted{color:var(--muted);font-size:13px}
+  .small{font-size:12px;color:var(--muted)}
+  .count{background:rgba(0,0,0,0.25);padding:4px 8px;border-radius:999px;font-size:12px}
+  textarea{width:100%;min-height:120px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--text)}
+  .form-row{display:flex;gap:8px;margin-bottom:8px}
+  .form-row input{flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--text)}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  .danger{background:linear-gradient(90deg,var(--danger),#ff8b8b);border:none}
+  footer{margin-top:12px;color:var(--muted);font-size:12px}
+  .badge{background:rgba(255,255,255,0.02);padding:6px 8px;border-radius:8px;font-size:12px}
+  .btn-link{background:transparent;border:none;color:var(--accent);cursor:pointer;padding:6px 8px;border-radius:8px}
+  .small-note{font-size:12px;color:var(--muted);margin-top:8px}
+  .flex-row{display:flex;gap:8px;align-items:center}
+  .controls .count-total{font-weight:700;color:var(--accent)}
+  .center-empty{padding:40px;text-align:center;color:var(--muted)}
+  .sr-only{position:absolute;left:-9999px}
+  .cat-tools{display:flex;gap:6px}
+  .cat-tools button{padding:6px;border-radius:6px}
+</style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header>
+      <div class="title">
+        <div>
+          <h1>Gerenciador de Links (até 200)</h1>
+          <p>Adicione, organize por categorias, pesquise e exporte uma página estática para publicar.</p>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="badge">Links: <span id="totalCount">0</span>/200</div>
+        <button id="exportHtmlBtn">Exportar HTML estático</button>
+        <button id="exportJsonBtn">Exportar JSON</button>
+        <button id="importJsonBtn" class="ghost">Importar JSON</button>
+        <button id="clearAllBtn" class="ghost">Limpar tudo</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <!-- Left panel: categorias e import bulk -->
+      <aside class="panel" style="height:calc(100% - 8px);">
+        <h3>Categorias</h3>
+        <div class="categories" id="cats"></div>
+
+        <div style="margin-top:12px">
+          <div class="form-row">
+            <input id="newCatName" placeholder="Nova categoria (ex: Redes, Produtos)" />
+            <button id="addCatBtn">Criar</button>
+          </div>
+          <div class="small-note">Clique numa categoria para vê-la. Use os botões ao lado para editar/excluir.</div>
+        </div>
+
+        <hr style="margin:12px 0;border:none;border-top:1px solid rgba(255,255,255,0.03)" />
+
+        <h3>Importação em massa</h3>
+        <div class="small-note">Cole links no formato `<nome> | <url>` por linha, ou apenas URLs.</div>
+        <textarea id="bulkTextarea" placeholder="Exemplo: Instagram | https://instagram.com/usuario"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button id="bulkImportBtn">Importar na categoria ativa</button>
+          <button id="bulkClearBtn" class="ghost">Limpar campo</button>
+        </div>
+      </aside>
+
+      <!-- Main panel: adicionar link e lista -->
+      <main>
+        <div class="panel">
+          <div class="main-top">
+            <div class="search">
+              <input id="searchInput" placeholder="Pesquisar links (nome, url)..." />
+            </div>
+            <div class="flex-row">
+              <button id="addLinkBtn">Adicionar link</button>
+            </div>
+          </div>
+
+          <div id="linksWrap">
+            <div class="center-empty" id="emptyMessage">
+              Nenhuma categoria selecionada. Crie uma categoria à esquerda ou clique em uma existente.
+            </div>
+
+            <div id="linksList" style="display:none">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <div class="small muted" id="catTitle">Categoria</div>
+                <div class="small muted">Ordenar: <select id="sortSelect">
+                  <option value="new">Novos primeiro</option>
+                  <option value="alpha">A → Z</option>
+                </select></div>
+              </div>
+
+              <div class="grid-links" id="gridLinks"></div>
+            </div>
+          </div>
+
+          <footer>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div class="small muted">Dados salvos localmente no navegador (localStorage). Exporte JSON para backup.</div>
+              <div><button id="downloadSampleBtn" class="ghost">Download exemplo estático</button></div>
+            </div>
+          </footer>
+        </div>
+
+        <!-- Hidden forms / dialogs -->
+        <div id="formArea" style="display:none;margin-top:12px">
+          <div class="panel">
+            <h3 id="formTitle">Adicionar link</h3>
+            <div class="form-row">
+              <input id="linkName" placeholder="Nome do link (ex: Instagram)" />
+              <input id="linkUrl" placeholder="URL (ex: https://...)" />
+              <select id="linkCat"></select>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button id="saveLinkBtn">Salvar</button>
+              <button id="cancelLinkBtn" class="ghost">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+<script>
+/*
+  Gerenciador de links (front-end only)
+  - Armazena tudo no localStorage na chave "linkhub_v1"
+  - Estrutura:
+    {
+      categories: [{id, name}],
+      links: [{id, name, url, catId, createdAt}]
+    }
+*/
+
+const STORAGE_KEY = 'linkhub_v1';
+const MAX_LINKS = 200;
+
+// Utilitários
+const $ = (sel, root=document) => root.querySelector(sel);
+const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+const uid = () => Math.random().toString(36).slice(2,10);
+
+// App state
+let store = { categories: [], links: [] };
+let activeCatId = null;
+let filteredLinks = [];
+let sortMode = 'new';
+
+// Elementos
+const totalCountEl = $('#totalCount');
+const catsEl = $('#cats');
+const newCatName = $('#newCatName');
+const addCatBtn = $('#addCatBtn');
+const addLinkBtn = $('#addLinkBtn');
+const linksListWrap = $('#linksList');
+const emptyMessage = $('#emptyMessage');
+const gridLinks = $('#gridLinks');
+const catTitle = $('#catTitle');
+const linkName = $('#linkName');
+const linkUrl = $('#linkUrl');
+const linkCat = $('#linkCat');
+const formArea = $('#formArea');
+const formTitle = $('#formTitle');
+const saveLinkBtn = $('#saveLinkBtn');
+const cancelLinkBtn = $('#cancelLinkBtn');
+const searchInput = $('#searchInput');
+const bulkTextarea = $('#bulkTextarea');
+const bulkImportBtn = $('#bulkImportBtn');
+const bulkClearBtn = $('#bulkClearBtn');
+const exportJsonBtn = $('#exportJsonBtn');
+const importJsonBtn = $('#importJsonBtn');
+const clearAllBtn = $('#clearAllBtn');
+const exportHtmlBtn = $('#exportHtmlBtn');
+const sortSelect = $('#sortSelect');
+const downloadSampleBtn = $('#downloadSampleBtn');
+
+// Load from storage
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){ store = JSON.parse(raw); }
+  }catch(e){
+    console.error('Erro ao carregar storage', e);
+    store = { categories: [], links: [] };
+  }
+}
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+  refreshCounts();
+}
+function refreshCounts(){
+  totalCountEl.textContent = store.links.length;
+}
+
+// UI render
+function renderCategories(){
+  catsEl.innerHTML = '';
+  if(store.categories.length === 0){
+    catsEl.innerHTML = '<div class="small muted">Nenhuma categoria. Crie uma.</div>';
+    return;
+  }
+  store.categories.forEach(cat=>{
+    const div = document.createElement('div');
+    div.className = 'cat' + (cat.id === activeCatId ? ' active' : '');
+    div.innerHTML = `<div style="display:flex;gap:8px;align-items:center"><span>${cat.name}</span></div>`;
+    // tools
+    const tools = document.createElement('div');
+    tools.className = 'cat-tools';
+    const editBtn = document.createElement('button'); editBtn.innerText='✏️'; editBtn.title='Editar'; editBtn.onclick = ()=>editCategory(cat.id);
+    const delBtn = document.createElement('button'); delBtn.innerText='🗑️'; delBtn.title='Excluir'; delBtn.onclick = ()=>deleteCategory(cat.id);
+    const openBtn = document.createElement('button'); openBtn.innerText='Abrir'; openBtn.title='Abrir categoria'; openBtn.onclick = ()=>openCategory(cat.id);
+    tools.appendChild(openBtn); tools.appendChild(editBtn); tools.appendChild(delBtn);
+    div.appendChild(tools);
+    catsEl.appendChild(div);
+  });
+}
+
+function renderCategorySelect(){
+  linkCat.innerHTML = '';
+  store.categories.forEach(c=>{
+    const opt = document.createElement('option');
+    opt.value = c.id; opt.textContent = c.name;
+    linkCat.appendChild(opt);
+  });
+}
+
+// open category
+function openCategory(catId){
+  activeCatId = catId;
+  renderCategories();
+  renderLinks();
+}
+
+// links render
+function renderLinks(){
+  if(!activeCatId){
+    linksListWrap.style.display = 'none';
+    emptyMessage.style.display = 'block';
+    return;
+  }
+  linksListWrap.style.display = 'block';
+  emptyMessage.style.display = 'none';
+  const cat = store.categories.find(c=>c.id===activeCatId);
+  catTitle.textContent = cat ? cat.name : 'Categoria';
+  // filter and sort
+  const q = searchInput.value.trim().toLowerCase();
+  let links = store.links.filter(l=>l.catId===activeCatId);
+  if(q){
+    links = links.filter(l => (l.name && l.name.toLowerCase().includes(q)) || (l.url && l.url.toLowerCase().includes(q)));
+  }
+  if(sortMode==='new') links.sort((a,b)=> b.createdAt - a.createdAt);
+  else links.sort((a,b)=> a.name.localeCompare(b.name));
+  filteredLinks = links;
+  gridLinks.innerHTML = '';
+  if(links.length===0){
+    gridLinks.innerHTML = '<div class="center-empty small muted">Nenhum link nesta categoria ainda.</div>';
+    return;
+  }
+  links.forEach(l=>{
+    const c=document.createElement('div'); c.className='link-card';
+    c.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <a href="${escapeHtml(l.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l.name)}</a>
+          <div class="small muted" style="margin-top:6px">${escapeHtml(l.url)}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <div class="small muted">${new Date(l.createdAt).toLocaleString()}</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn-link" data-id="${l.id}" title="Editar">✏️</button>
+            <button class="btn-link" data-id-del="${l.id}" title="Excluir">🗑️</button>
+          </div>
+        </div>
+      </div>
+    `;
+    // bind buttons
+    c.querySelectorAll('[data-id]').forEach(btn=>{
+      btn.onclick = ()=> openEditLink(btn.dataset.id);
+    });
+    c.querySelectorAll('[data-id-del]').forEach(btn=>{
+      btn.onclick = ()=> { if(confirm('Excluir este link?')) deleteLink(btn.dataset.id); };
+    });
+    gridLinks.appendChild(c);
+  });
+}
+
+// escape helper
+function escapeHtml(s=''){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+
+// Category actions
+function addCategory(name){
+  if(!name || !name.trim()) return alert('Nome inválido');
+  const id = uid();
+  store.categories.push({id,name: name.trim()});
+  save();
+  renderCategories();
+  renderCategorySelect();
+  newCatName.value='';
+}
+function editCategory(id){
+  const cat = store.categories.find(c=>c.id===id);
+  if(!cat) return;
+  const nn = prompt('Editar nome da categoria', cat.name);
+  if(nn && nn.trim()){
+    cat.name = nn.trim();
+    save(); renderCategories(); renderCategorySelect();
+  }
+}
+function deleteCategory(id){
+  if(!confirm('Excluir categoria e todos os links dentro dela?')) return;
+  store.links = store.links.filter(l=> l.catId !== id);
+  store.categories = store.categories.filter(c=> c.id !== id);
+  if(activeCatId === id) activeCatId = store.categories.length ? store.categories[0].id : null;
+  save();
+  renderCategories(); renderCategorySelect(); renderLinks();
+}
+
+// Link actions
+function openAddLink(){
+  if(store.categories.length===0){ return alert('Crie uma categoria antes de adicionar links.'); }
+  formTitle.textContent = 'Adicionar link';
+  linkName.value=''; linkUrl.value='';
+  linkCat.value = activeCatId || store.categories[0].id;
+  formArea.style.display = 'block';
+  linkName.focus();
+}
+let editLinkId = null;
+function openEditLink(id){
+  const l = store.links.find(x=>x.id===id);
+  if(!l) return;
+  editLinkId = id;
+  formTitle.textContent = 'Editar link';
+  linkName.value = l.name;
+  linkUrl.value = l.url;
+  linkCat.value = l.catId;
+  formArea.style.display = 'block';
+}
+function saveLink(){
+  const name = linkName.value.trim();
+  const url = linkUrl.value.trim();
+  const catId = linkCat.value;
+  if(!name || !url) return alert('Preencha nome e URL.');
+  if(!isValidUrl(url)) return alert('URL inválida. Inclua https://');
+  if(editLinkId){
+    const l = store.links.find(x=>x.id===editLinkId);
+    if(l){ l.name=name; l.url=url; l.catId=catId; }
+    editLinkId = null;
+  }else{
+    if(store.links.length >= MAX_LINKS) return alert('Limite de 200 links atingido.');
+    store.links.push({id: uid(), name, url, catId, createdAt: Date.now()});
+  }
+  save();
+  formArea.style.display = 'none';
+  renderLinks();
+}
+function cancelLink(){
+  editLinkId = null;
+  formArea.style.display = 'none';
+}
+function deleteLink(id){
+  store.links = store.links.filter(l=> l.id !== id);
+  save(); renderLinks();
+}
+
+// Bulk import
+function bulkImport(){
+  const txt = bulkTextarea.value.trim();
+  if(!txt) return alert('Cole alguns links primeiro.');
+  if(!activeCatId) return alert('Selecione uma categoria ativa para importar os links.');
+  const lines = txt.split(/\r?\n/).map(r=>r.trim()).filter(Boolean);
+  let added=0, skipped=0;
+  for(const line of lines){
+    if(store.links.length >= MAX_LINKS){ skipped += lines.length; break; }
+    // formats: "Name | url" or just "url"
+    const parts = line.split('|').map(p=>p.trim());
+    let name='', url='';
+    if(parts.length===1){
+      url = parts[0]; name = parts[0];
+    }else{
+      name = parts[0] || parts[1];
+      url = parts[1] || parts[0];
+    }
+    if(!isValidUrl(url)) { skipped++; continue; }
+    store.links.push({id: uid(), name, url, catId: activeCatId, createdAt: Date.now()});
+    added++;
+  }
+  save();
+  renderLinks();
+  alert(`Importação concluída. Adicionados: ${added}. Ignorados/inválidos: ${skipped}.`);
+}
+
+// validation
+function isValidUrl(u){
+  try{
+    const url = new URL(u);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  }catch(e){ return false; }
+}
+
+// search
+searchInput.addEventListener('input', ()=> renderLinks());
+
+// sort
+sortSelect.addEventListener('change', ()=> { sortMode = sortSelect.value; renderLinks(); });
+
+// export/import JSON
+function exportJson(){
+  const data = JSON.stringify(store, null, 2);
+  downloadData('links-backup.json', data, 'application/json');
+}
+function importJson(){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/json';
+  input.onchange = e=>{
+    const f = e.target.files[0];
+    if(!f) return;
+    const reader = new FileReader();
+    reader.onload = ev=>{
+      try{
+        const parsed = JSON.parse(ev.target.result);
+        if(!parsed.categories || !parsed.links) return alert('Arquivo inválido.');
+        if(parsed.links.length > MAX_LINKS) {
+          if(!confirm('Arquivo tem mais que 200 links. Importar apenas os primeiros 200?')) return;
+          parsed.links = parsed.links.slice(0, MAX_LINKS);
+        }
+        store = parsed;
+        save();
+        renderAll();
+        alert('Importação concluída.');
+      }catch(err){
+        alert('Erro ao importar JSON: ' + err.message);
+      }
+    };
+    reader.readAsText(f);
+  };
+  input.click();
+}
+
+// export HTML estático
+function exportStaticHtml(){
+  // generate minimal static HTML from current store
+  const title = 'Meus Links';
+  let html = `<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title>
+<style>
+body{font-family:Inter,Arial,Helvetica,sans-serif;background:#071022;color:#eaf2f6;padding:24px}
+.container{max-width:900px;margin:0 auto}
+.header{display:flex;justify-content:space-between;align-items:center}
+h1{margin:0 0 6px 0}
+.grid{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.cat{background:rgba(255,255,255,0.03);padding:12px;border-radius:8px;min-width:220px;flex:1}
+.cat h2{margin:0 0 6px 0;font-size:16px}
+.cat a{display:block;color:#00d1b2;text-decoration:none;margin:6px 0}
+.small{color:#9fb6bf;font-size:13px}
+</style>
+</head><body><div class="container"><div class="header"><h1>${escapeHtml(title)}</h1><div class="small">Gerado em ${new Date().toLocaleString()}</div></div>`;
+
+  // group links by category order
+  const cats = store.categories;
+  const linksByCat = {};
+  store.links.forEach(l=>{
+    if(!linksByCat[l.catId]) linksByCat[l.catId]=[];
+    linksByCat[l.catId].push(l);
+  });
+  html += '<div class="grid">';
+  for(const c of cats){
+    html += `<div class="cat"><h2>${escapeHtml(c.name)}</h2>`;
+    const items = linksByCat[c.id] || [];
+    if(items.length===0){ html += '<div class="small">Sem links</div>'; }
+    else {
+      items.sort((a,b)=> b.createdAt - a.createdAt);
+      for(const li of items){
+        html += `<a href="${escapeHtml(li.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(li.name)}</a>`;
+      }
+    }
+    html += '</div>';
+  }
+  html += '</div></div></body></html>';
+  downloadData('links_static.html', html, 'text/html');
+}
+
+// helper download
+function downloadData(filename, content, mime){
+  const blob = new Blob([content], {type: mime || 'application/octet-stream'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  a.remove(); URL.revokeObjectURL(url);
+}
+
+// clear all
+function clearAll(){
+  if(!confirm('Apagar todas categorias e links (irreversível)?')) return;
+  store = {categories:[], links:[]};
+  activeCatId = null; save(); renderAll();
+}
+
+// download sample static
+function downloadSampleStatic(){
+  // sample minimal page
+  const sample = `<!doctype html><html><head><meta charset="utf-8"><title>Exemplo</title></head><body><h1>Exemplo</h1><p>Substitua conteúdo.</p></body></html>`;
+  downloadData('sample.html', sample, 'text/html');
+}
+
+// render all
+function renderAll(){
+  renderCategories(); renderCategorySelect();
+  renderLinks(); refreshCounts();
+}
+
+// events
+addCatBtn.addEventListener('click', ()=> addCategory(newCatName.value));
+addLinkBtn.addEventListener('click', openAddLink);
+saveLinkBtn.addEventListener('click', saveLink);
+cancelLinkBtn.addEventListener('click', cancelLink);
+bulkImportBtn.addEventListener('click', bulkImport);
+bulkClearBtn.addEventListener('click', ()=> bulkTextarea.value='');
+exportJsonBtn.addEventListener('click', exportJson);
+importJsonBtn.addEventListener('click', importJson);
+clearAllBtn.addEventListener('click', clearAll);
+exportHtmlBtn.addEventListener('click', exportStaticHtml);
+downloadSampleBtn.addEventListener('click', downloadSampleStatic);
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape') { formArea.style.display='none'; editLinkId=null; } });
+
+// init
+load();
+renderAll();
+
+// small helpers for editing/deleting category via prompt when clicking category
+function editCategoryNameInline(id, newName){
+  const c = store.categories.find(x=>x.id===id);
+  if(c) c.name = newName;
+  save(); renderAll();
+}
+function deleteCategoryById(id){ deleteCategory(id); }
+
+</script>
+</body>
+</html>
