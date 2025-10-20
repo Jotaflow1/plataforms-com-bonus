@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Plataformas com Bônus</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #111;
+    color: #eee;
+    padding: 20px;
+    max-width: 700px;
+    margin: auto;
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #ff69b4;
+  }
+  form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+  }
+  input[type="text"] {
+    flex: 1 1 200px;
+    padding: 10px;
+    font-size: 1em;
+    border-radius: 6px;
+    border: none;
+  }
+  button {
+    padding: 10px 15px;
+    background: #ff69b4;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.3s;
+  }
+  button:hover {
+    background: #ff85c1;
+  }
+  #linksList {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  .link-item {
+    background: #222;
+    padding: 15px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 0 8px #ff69b4aa;
+  }
+  .link-image {
+    width: 90px;
+    height: 90px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: #444;
+    flex-shrink: 0;
+    border: 2px solid #ff69b4;
+  }
+  .link-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .link-name {
+    font-size: 1.1em;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .emoji-anim {
+    display: inline-block;
+    animation: wiggle 1.2s infinite;
+  }
+  @keyframes wiggle {
+    0%,100% {transform: rotate(0deg);}
+    25% {transform: rotate(-15deg);}
+    75% {transform: rotate(15deg);}
+  }
+  .buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .btn-link, .btn-remove {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    color: white;
+    user-select: none;
+  }
+  .btn-link {
+    background: #ff69b4;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .btn-link:hover {
+    background: #ff85c1;
+  }
+  .btn-remove {
+    background: #ff4444;
+  }
+  .btn-remove:hover {
+    background: #ff6666;
+  }
+  .img-url-input {
+    margin-top: 6px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: none;
+    width: 100%;
+    font-size: 0.9em;
+  }
+</style>
+</head>
+<body>
+
+<h1>Plataformas com Bônus</h1>
+
+<form id="linkForm">
+  <input type="text" id="inputName" placeholder="Nome do link (ex: Promoção Top)" required />
+  <input type="text" id="inputURL" placeholder="URL do link (ex: https://exemplo.com)" required />
+  <button type="submit">Adicionar Link</button>
+</form>
+
+<div id="linksList"></div>
+
+<script>
+  const emojis = ['🤑','🎰','💸','🪙','💵','🎲','🍀','💎','🥇','🔥'];
+  let emojiIndex = 0;
+
+  const linksList = document.getElementById('linksList');
+  const form = document.getElementById('linkForm');
+  const inputName = document.getElementById('inputName');
+  const inputURL = document.getElementById('inputURL');
+
+  let links = JSON.parse(localStorage.getItem('meusLinks')) || [];
+
+  function renderLinks(){
+    linksList.innerHTML = '';
+    links.forEach((link, index) => {
+      const card = document.createElement('div');
+      card.className = 'link-item';
+
+      const img = document.createElement('img');
+      img.className = 'link-image';
+      img.alt = 'Imagem do link';
+
+      img.src = link.imgUrl || `https://www.google.com/s2/favicons?domain=${getDomain(link.url)}&sz=128`;
+      
+      img.onerror = () => {
+        img.src = 'https://via.placeholder.com/90?text=Sem+Imagem';
+        inputManual.style.display = 'block';
+      };
+
+      const info = document.createElement('div');
+      info.className = 'link-info';
+
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'link-name';
+      nameDiv.textContent = link.name;
+
+      const emojiSpan = document.createElement('span');
+      emojiSpan.className = 'emoji-anim';
+      emojiSpan.textContent = emojis[(emojiIndex++) % emojis.length];
+      nameDiv.appendChild(emojiSpan);
+
+      const buttons = document.createElement('div');
+      buttons.className = 'buttons';
+
+      const btnLink = document.createElement('a');
+      btnLink.href = link.url;
+      btnLink.target = '_blank';
+      btnLink.className = 'btn-link';
+      btnLink.textContent = 'Clica Aqui';
+
+      const btnRemove = document.createElement('button');
+      btnRemove.className = 'btn-remove';
+      btnRemove.textContent = 'Remover';
+      btnRemove.title = 'Remover este link';
+      btnRemove.onclick = () => {
+        links.splice(index, 1);
+        saveAndRender();
+      };
+
+      buttons.appendChild(btnLink);
+      buttons.appendChild(btnRemove);
+
+      const inputManual = document.createElement('input');
+      inputManual.type = 'text';
+      inputManual.placeholder = 'Cole URL da imagem aqui se não aparecer';
+      inputManual.className = 'img-url-input';
+      inputManual.style.display = 'none';
+
+      inputManual.addEventListener('input', () => {
+        if(inputManual.value.trim() !== '') {
+          img.src = inputManual.value.trim();
+          link.imgUrl = inputManual.value.trim();
+          saveAndRender();
+          inputManual.style.display = 'none';
+        }
+      });
+
+      info.appendChild(nameDiv);
+      info.appendChild(buttons);
+      info.appendChild(inputManual);
+
+      card.appendChild(img);
+      card.appendChild(info);
+
+      linksList.appendChild(card);
+    });
+  }
+
+  function saveAndRender(){
+    localStorage.setItem('meusLinks', JSON.stringify(links));
+    renderLinks();
+  }
+
+  function getDomain(url){
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return url;
+    }
+  }
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const name = inputName.value.trim();
+    const url = inputURL.value.trim();
+
+    if(!name || !url) return alert('Preencha nome e URL');
+
+    if(links.some(l => l.url === url)){
+      if(!confirm('Link já existe. Deseja adicionar mesmo assim?')) {
+        return;
+      }
+    }
+
+    links.push({name, url});
+    saveAndRender();
+
+    inputName.value = '';
+    inputURL.value = '';
+  });
+
+  renderLinks();
+</script>
+
+</body>
+</html>
